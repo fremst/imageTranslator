@@ -1,0 +1,5 @@
+center_position: 660
+wait_url: 0.5
+wait_loading: 1
+wait_save: 1
+delete_temp: Y

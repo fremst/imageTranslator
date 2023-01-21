@@ -3,21 +3,32 @@ import ftplib
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from config import get_config_data
-from main import is_target_file
+
+
+@pytest.fixture()
+def make_is_target_file():
+    from helper import make_is_target_file
+    return make_is_target_file
+
+
+@pytest.fixture()
+def get_uid():
+    from helper import get_uid
+    return get_uid
 
 
 @pytest.fixture
 def config_data():
+    from config import get_config_data
     return get_config_data()
 
 
 @pytest.fixture()
 def input_values():
     input_values = {
-        'min_uid': 124597,
+        'min_uid': 0,
         'max_uid': 0,
-        'min_date': 230119,
+        'min_date': 0,
         'max_date': 0,
         'tab': [1, 1, 1]
     }
@@ -33,25 +44,36 @@ def session(config_data):
     return session
 
 
-def test_get_files(config_data, input_values, session):
-    print(input_values)
+@pytest.fixture()
+def is_target_file(config_data, make_is_target_file, input_values):
+    option = {
+        "folder_name": config_data['ftp_folder'],
+        "uid": {"min": input_values['min_uid'], "max": input_values['max_uid']},
+        "date": {"min": input_values['min_date'], "max": input_values['max_date']},
+        "tab": input_values['tab']
+    }
+    is_target_file = make_is_target_file(option)
+    return is_target_file
 
-    tab = input_values['tab']
-    uid = input_values['min_uid']
-    while True:
-        if input_values['max_uid'] != 0 and uid > input_values['max_uid']:
-            break
-        uid = str(uid)
-        print('[' + uid + '] 상품 작업중')
-        ftp_files = session.nlst(config_data['ftp_folder'])
-        ftp_file_count = 0
-        # for full_file_name in ftp_files:
-        #     file_name = full_file_name[len(config_data['ftp_folder'])::]
-        #     print(11)
-            # if is_target_file(file_name, full_file_name, input_values, uid):
-            #     for (ind, tab_chk) in enumerate(tab):
-            #         ind = str(ind)
-            #         if file_name[len(uid) + len('yymmdd') + 2] == ind and tab_chk:
-            #             ftp_file_count += 1
-            #             img_url = config_data['ftp_url'] + full_file_name
-        assert True
+
+@pytest.mark.skip()
+def test_ftp_file1(is_target_file):
+    test_full_file_name = 'NEW/test.jpg'
+    assert not is_target_file(test_full_file_name)
+
+
+@pytest.mark.skip
+def test_ftp_file2(is_target_file):
+    test_full_file_name = 'NEW/109692_221226_2_1.jpg'
+    assert is_target_file(test_full_file_name)
+
+
+def test_a(session, config_data, is_target_file, get_uid):
+    ftp_files = session.nlst(config_data['ftp_folder'])
+    target_files = []
+    for full_file_name in ftp_files:
+        if is_target_file(full_file_name):
+            target_files.append(full_file_name)
+
+    target_uids = list(set(map(get_uid, target_files)))
+    print(target_uids)

@@ -6,6 +6,7 @@ import keyboard
 import os
 import shutil
 from config import get_config_data, get_translator_config_data
+from helper import make_is_target_file, get_uid
 
 # pyinstaller main.py -F --upx-dir C:\DevStudy\upx401w64\
 
@@ -99,6 +100,12 @@ def upload_imgs(_session, _temp_files):
 def close_job(_wait_window):
     _wait_window.destroy()
     exit(0)
+
+
+def detect_pause():
+    if keyboard.is_pressed('F4'):
+        print('일시 정지')
+        os.system("pause")
 
 
 def main_job():
@@ -201,70 +208,66 @@ def main_job():
 
     make_temp_dir()
 
-    job_count = int(0)
     success = int(0)
     fail = int(0)
 
     session = connect_session()
 
-    tab = input_values['tab']
+    option = {
+        "folder_name": config_data['ftp_folder'],
+        "uid": {"min": input_values['min_uid'], "max": input_values['max_uid']},
+        "date": {"min": input_values['min_date'], "max": input_values['max_date']},
+        "tab": input_values['tab']
+    }
+    is_target_file = make_is_target_file(option)
 
-    uid = input_values['min_uid']
+    ftp_files = session.nlst(config_data['ftp_folder'])
+    session.close()
+    target_files = []
+    for full_file_name in ftp_files:
+        if is_target_file(full_file_name):
+            target_files.append(full_file_name)
 
-    print(input_values)
+    target_files = sorted(target_files)
 
-    while True:
-        if input_values['max_uid'] != 0 and uid > input_values['max_uid']:
-            break
-        uid = str(uid)
-        print('[' + uid + '] 상품 작업중')
-        ftp_files = session.nlst(config_data['ftp_folder'])
-        ftp_file_count = 0
+    target_uids = sorted(list(set(map(get_uid, target_files))))
+    full_count = len(target_uids)
+
+    for target_uid in target_uids:
+        print('[' + target_uid + '] 상품 작업중')
         try:
-            for full_file_name in ftp_files:
-                file_name = full_file_name[len(config_data['ftp_folder'])::]
-                if is_target_file(file_name, full_file_name, input_values, uid):
-                    for (ind, tab_chk) in enumerate(tab):
-                        ind = str(ind)
-                        if file_name[len(uid) + len('yymmdd') + 2] == ind and tab_chk:
-                            ftp_file_count += 1
-                            img_url = config_data['ftp_url'] + full_file_name
-                            detect_pause()
-                            translate_img(img_url, file_name)
-                            if os.path.isfile('temp/'+file_name):
-                                print(file_name, '이미지 저장 성공!')
-                            else:
-                                raise Exception('temp/'+file_name+' 이미지 저장 실패')
-
-            temp_files = os.listdir(os.getcwd() + '/temp')
-            session.close()
-
-            session = connect_session()
-            upload_imgs(session, temp_files)
-            print('[' + uid + '] 전체 번역 및 업로드 성공!')
-            if translator_config_data['delete_temp'] == 'Y':
-                shutil.rmtree(os.getcwd()+'/temp')
-                os.mkdir('temp')
-            success += 1
-            uid = int(uid) + 1
+            for target_full_file_name in target_files:
+                file_name = target_full_file_name[len(config_data['ftp_folder'])::]
+                if not file_name.startswith(target_uid + '_'):
+                    continue
+                img_url = config_data['ftp_url'] + target_full_file_name
+                detect_pause()
+                translate_img(img_url, file_name)
+                if os.path.isfile('temp/' + file_name):
+                    print(file_name, '이미지 저장 성공!')
+                else:
+                    raise Exception('temp/' + file_name + ' 이미지 저장 실패')
         except Exception as e:
             print(e)
-            print('[' + uid + '] 작업 중 오류 발생')
+            print('작업 중 오류 발생')
             fail += 1
-            continue
 
-    job_count = success + fail
-    pyautogui.alert(f'{job_count}개의 상품 작업 완료! 성공: {success}, 실패: {fail}')
-    print(f'{job_count}개의 상품 작업 완료! 성공: {success}, 실패: {fail}')
+        temp_files = os.listdir(os.getcwd() + '/temp')
+        session = connect_session()
+        upload_imgs(session, temp_files)
+        session.close()
 
+        print('[' + target_uid + '] 전체 번역 및 업로드 성공!')
+        if translator_config_data['delete_temp'] == 'Y':
+            shutil.rmtree(os.getcwd() + '/temp')
+            os.mkdir('temp')
+        success += 1
 
-def detect_pause():
-    if keyboard.is_pressed('F4'):
-        os.system("pause")
+    pyautogui.alert(f'{full_count}중 {success+fail}개의 상품 작업 완료! 성공: {success}, 실패: {fail}')
+    print(f'{full_count}중 {success+fail}개의 상품 작업 완료! 성공: {success}, 실패: {fail}')
 
 
 if __name__ == '__main__':
-
     config_data = get_config_data()
     translator_config_data = get_translator_config_data()
     while True:

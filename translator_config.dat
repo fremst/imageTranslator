@@ -1,5 +1,7 @@
-center_position: 660
+x_position: 660
+y_position: 500
 wait_url: 0.5
 wait_loading: 1
 wait_save: 1
+max_wait_time: 3
 delete_temp: Y

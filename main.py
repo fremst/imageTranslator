@@ -32,18 +32,17 @@ def connect_session():
     return session
 
 
-def is_target_file(file_name, full_file_name, input_values, uid):
-    return full_file_name.startswith(config_data['ftp_folder'] + uid + '_') \
-           and (input_values['min_date'] == 0
-                or input_values['min_date'] <= int(file_name[len(uid) + 1:len(uid) + 1 + len('yymmdd'):])) \
-           and (input_values['max_date'] == 0
-                or int(file_name[len(uid) + 1:len(uid) + 1 + len('yymmdd'):]) <= input_values['max_date'])
-
-
-def get_img_pos(_img_file_name):
+def get_img_pos(_img_file_name, _max_wait_time=0.0):
     _img_pos = None
+    _wait_time = 0
     while _img_pos is None:
+        start = time.time()
         _img_pos = pyautogui.locateCenterOnScreen('images/' + _img_file_name)
+        end = time.time()
+        if _max_wait_time != 0:
+            _wait_time += end-start
+            if _wait_time >= _max_wait_time:
+                return None
     return _img_pos
 
 
@@ -61,16 +60,19 @@ def translate_img(_img_url, _file_name):
     get_img_pos('image_loaded.png')
     print(_file_name, '이미지 로딩 완료')
 
-    pyautogui.click(int(translator_config_data['center_position']), 500, button='right')
-    pyautogui.click(get_img_pos('translate_menu.png'))
+    pyautogui.click(int(translator_config_data['x_position']), int(translator_config_data['y_position']), button='right')
+    translate_menu_pos = get_img_pos('translate_menu.png')
+    if translate_menu_pos is None:
+        print(f'{translator_config_data["max_wait_time"]}초 대기 후 스킵')
+        return
+    pyautogui.click(translate_menu_pos)
 
     print(_file_name, '이미지 번역 대기중')
     get_img_pos('translate_complete.png')
     print(_file_name, '이미지 번역 완료')
 
-    pyautogui.click(960, 500, button='right')
+    pyautogui.click(int(translator_config_data['x_position']), int(translator_config_data['y_position']), button='right')
     pyautogui.click(get_img_pos('save_as.png'))
-
     print(_file_name, '다운로드 창 대기중')
     get_img_pos('save_as_window.png')
     pyautogui.write(_file_name)
@@ -219,6 +221,7 @@ def main_job():
         "date": {"min": input_values['min_date'], "max": input_values['max_date']},
         "tab": input_values['tab']
     }
+
     is_target_file = make_is_target_file(option)
 
     ftp_files = session.nlst(config_data['ftp_folder'])
@@ -246,11 +249,12 @@ def main_job():
                 if os.path.isfile('temp/' + file_name):
                     print(file_name, '이미지 저장 성공!')
                 else:
-                    raise Exception('temp/' + file_name + ' 이미지 저장 실패')
+                    raise Exception(file_name + ' 이미지 저장 실패')
         except Exception as e:
             print(e)
             print('작업 중 오류 발생')
             fail += 1
+            continue
 
         temp_files = os.listdir(os.getcwd() + '/temp')
         session = connect_session()

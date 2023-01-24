@@ -37,11 +37,13 @@ def get_config_data():
 
 def get_translator_config_data():
     _translator_config_data = {
-        'center_position': None,
+        'x_position': None,
+        'y_position': None,
+        'max_wait_time': None,
         'wait_url': None,
         'wait_loading': None,
         'wait_save': None,
-        'delete_temp': None
+        'delete_temp': None,
     }
     try:
         with open(os.getcwd() + '/translator_config.dat') as file:

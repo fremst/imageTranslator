@@ -39,10 +39,13 @@ def get_img_pos(_img_file_name, _skip_img_file_names=None):
     _img_pos = None
     while _img_pos is None:
         _img_pos = pyautogui.locateCenterOnScreen('images/' + _img_file_name)
-        for _skip_img_file_name in _skip_img_file_names:
-            if pyautogui.locateCenterOnScreen('images/' + _skip_img_file_name):
-                return None
-    return _img_pos
+        if _img_pos:
+            return _img_pos
+        else:
+            for _skip_img_file_name in _skip_img_file_names:
+                if pyautogui.locateCenterOnScreen('images/' + _skip_img_file_name):
+                    return None
+
 
 
 def translate_img(_img_url, _file_name):
@@ -57,19 +60,23 @@ def translate_img(_img_url, _file_name):
 
     time.sleep(float(translator_config_data['wait_loading']))
     print(_file_name, '이미지 로딩 대기중')
-    get_img_pos('image_loaded.png')
+    image_loaded = get_img_pos('image_loaded.png')
+    print("image_loaded: ", image_loaded)
     print(_file_name, '이미지 로딩 완료')
 
     pyautogui.click(int(translator_config_data['x_position']), int(translator_config_data['y_position']),
                     button='right')
     translate_menu_pos = get_img_pos('translate_menu.png', ['open_in_mobile.png'])
+    print("translate_menu_pos: ", translate_menu_pos)
     if translate_menu_pos is None:
         print('이미지가 작아 스킵')
         return False
     pyautogui.click(translate_menu_pos)
 
     print(_file_name, '이미지 번역 대기중')
-    if get_img_pos('translate_complete.png', ['no_text.png', 'no_text2.png', 'no_text3.png']) is None:
+    translate_complete = get_img_pos('translate_complete.png', ['no_text.png', 'no_text2.png', 'no_text3.png'])
+    print("translate_complete: ", translate_complete)
+    if translate_complete is None:
         print('텍스트가 없어 스킵')
         return False
 
@@ -276,7 +283,8 @@ def main_job():
 
         if uid_success > 0:
             session = connect_session()
-            temp_files = os.listdir(os.getcwd() + '/temp')
+            temp_all_files = os.listdir(os.getcwd() + '/temp')
+            temp_files = list(filter(lambda file: file.startswith(target_uid + "_"), temp_all_files))
             upload_imgs(session, temp_files)
             session.close()
             print(f'[{target_uid}] {uid_success}개 이미지 번역 및 업로드 성공!')

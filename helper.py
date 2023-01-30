@@ -21,4 +21,4 @@ def make_is_target_file(option):
 
 
 def get_uid(full_file_name):
-    return full_file_name.split('/')[-1].split('_')[0]
+    return int(full_file_name.split('/')[-1].split('_')[0])

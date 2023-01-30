@@ -47,7 +47,6 @@ def get_img_pos(_img_file_name, _skip_img_file_names=None):
                     return None
 
 
-
 def translate_img(_img_url, _file_name):
     pyautogui.click(960, 0)
 
@@ -233,8 +232,7 @@ def main_job():
 
     success = int(0)
     fail = int(0)
-
-    session = connect_session()
+    full_count = int(0)
 
     option = {
         "folder_name": config_data['ftp_folder'],
@@ -243,60 +241,73 @@ def main_job():
         "tab": input_values['tab']
     }
 
-    is_target_file = make_is_target_file(option)
+    while True:
+        is_target_file = make_is_target_file(option)
 
-    ftp_files = session.nlst(config_data['ftp_folder'])
-    session.close()
-    target_files = []
-    for full_file_name in ftp_files:
-        if is_target_file(full_file_name):
-            target_files.append(full_file_name)
+        print("ftp 파일 탐색중")
+        session = connect_session()
+        ftp_files = session.nlst(config_data['ftp_folder'])
+        session.close()
+        target_files = []
+        for full_file_name in ftp_files:
+            if is_target_file(full_file_name):
+                target_files.append(full_file_name)
 
-    target_files = sorted(target_files)
+        target_files = sorted(target_files)
 
-    target_uids = sorted(list(set(map(get_uid, target_files))))
-    full_count = len(target_uids)
+        target_uids = sorted(list(set(map(get_uid, target_files))))
+        if len(target_uids) == 0:
+            break
+        option["uid"]["min"] = max(target_uids) + 1
 
-    for target_uid in target_uids:
-        print('[' + target_uid + '] 상품 작업중')
-        uid_success = 0
-        try:
-            for target_full_file_name in target_files:
-                file_name = target_full_file_name[len(config_data['ftp_folder'])::]
-                if not file_name.startswith(target_uid + '_'):
-                    continue
-                img_url = config_data['ftp_url'] + target_full_file_name
-                detect_pause()
-                translate_is_done = translate_img(img_url, file_name)
-                if translate_is_done:
-                    download_img(file_name)
-                    if os.path.isfile('temp/' + file_name):
-                        uid_success += 1
-                        print(file_name, '이미지 저장 성공!')
-                    else:
-                        raise Exception(file_name + ' 이미지 저장 실패')
-        except Exception as e:
-            print(e)
-            print('작업 중 오류 발생')
-            fail += 1
-            continue
+        full_count += len(target_uids)
 
-        if uid_success > 0:
-            session = connect_session()
-            temp_all_files = os.listdir(os.getcwd() + '/temp')
-            temp_files = list(filter(lambda file: file.startswith(target_uid + "_"), temp_all_files))
-            upload_imgs(session, temp_files)
-            session.close()
-            print(f'[{target_uid}] {uid_success}개 이미지 번역 및 업로드 성공!')
-            if translator_config_data['delete_temp'] == 'Y':
-                shutil.rmtree(os.getcwd() + '/temp')
-                os.mkdir('temp')
-        else:
-            print(f'[{target_uid}] 번역한 이미지가 없습니다.')
-        success += 1
+        last_target_uid = -1
+        for target_uid in target_uids:
+            last_target_uid = target_uid
+            target_uid = str(target_uid)
+            print('[' + target_uid + '] 상품 작업중')
+            uid_success = 0
+            try:
+                for target_full_file_name in target_files:
+                    file_name = target_full_file_name[len(config_data['ftp_folder'])::]
+                    if not file_name.startswith(target_uid + '_'):
+                        continue
+                    img_url = config_data['ftp_url'] + target_full_file_name
+                    detect_pause()
+                    translate_is_done = translate_img(img_url, file_name)
+                    if translate_is_done:
+                        download_img(file_name)
+                        if os.path.isfile('temp/' + file_name):
+                            uid_success += 1
+                            print(file_name, '이미지 저장 성공!')
+                        else:
+                            raise Exception(file_name + ' 이미지 저장 실패')
+            except Exception as e:
+                print(e)
+                print('작업 중 오류 발생')
+                fail += 1
+                continue
 
-    pyautogui.alert(f'{full_count}중 {success + fail}개의 상품 작업 완료! 성공: {success}, 실패: {fail}')
+            if uid_success > 0:
+                session = connect_session()
+                temp_all_files = os.listdir(os.getcwd() + '/temp')
+                temp_files = list(filter(lambda file: file.startswith(target_uid + "_"), temp_all_files))
+                upload_imgs(session, temp_files)
+                session.close()
+                print(f'[{target_uid}] {uid_success}개 이미지 번역 및 업로드 성공!')
+                if translator_config_data['delete_temp'] == 'Y':
+                    shutil.rmtree(os.getcwd() + '/temp')
+                    os.mkdir('temp')
+            else:
+                print(f'[{target_uid}] 번역한 이미지가 없습니다.')
+            success += 1
+
+        if (option["uid"]["max"] != 0) and (last_target_uid >= int(option["uid"]["max"])):
+            break
+
     print(f'{full_count}중 {success + fail}개의 상품 작업 완료! 성공: {success}, 실패: {fail}')
+    pyautogui.alert(f'{full_count}중 {success + fail}개의 상품 작업 완료! 성공: {success}, 실패: {fail}')
 
 
 if __name__ == '__main__':

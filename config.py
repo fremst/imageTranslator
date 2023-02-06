@@ -39,10 +39,9 @@ def get_translator_config_data():
     _translator_config_data = {
         'x_position': None,
         'y_position': None,
-        'max_wait_time': None,
         'wait_url': None,
         'wait_loading': None,
-        'wait_save': None,
+        'wait_translate_menu': None,
         'delete_temp': None,
     }
     try:

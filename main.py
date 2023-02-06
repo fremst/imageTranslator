@@ -48,32 +48,44 @@ def get_img_pos(_img_file_name, _skip_img_file_names=None):
 
 
 def translate_img(_img_url, _file_name):
-    pyautogui.click(960, 0)
+    from datetime import datetime
 
+    pyautogui.click(960, 0)
+    
     pyautogui.hotkey('win', 'up')
     pyautogui.hotkey('ctrl', 'l')
     pyautogui.hotkey('ctrl', 'l')
     pyautogui.write(_img_url)
     time.sleep(float(translator_config_data['wait_url']))
     pyautogui.press('enter')
+    print(datetime.utcnow().strftime('%H:%M:%S.%f') + ' - enter')
 
     time.sleep(float(translator_config_data['wait_loading']))
+    print(datetime.utcnow().strftime('%H:%M:%S.%f') + ' - wait_loading 끝')
     print(_file_name, '이미지 로딩 대기중')
+    print(datetime.utcnow().strftime('%H:%M:%S.%f') + ' - 로딩 대기')
     image_loaded = get_img_pos('image_loaded.png')
+    print(datetime.utcnow().strftime('%H:%M:%S.%f') + ' - image_loaded.png 찾기 완료')
     print("image_loaded: ", image_loaded)
     print(_file_name, '이미지 로딩 완료')
 
     pyautogui.click(int(translator_config_data['x_position']), int(translator_config_data['y_position']),
                     button='right')
+    print(datetime.utcnow().strftime('%H:%M:%S.%f') + ' - 우클릭')
+    time.sleep(float(translator_config_data['wait_translate_menu']))
+    print(datetime.utcnow().strftime('%H:%M:%S.%f') + ' - wait_translate_menu 끝')
     translate_menu_pos = get_img_pos('translate_menu.png', ['open_in_mobile.png'])
+    print(datetime.utcnow().strftime('%H:%M:%S.%f') + ' - translate_menu.png 찾기 완료')
     print("translate_menu_pos: ", translate_menu_pos)
     if translate_menu_pos is None:
         print('이미지가 작아 스킵')
         return False
     pyautogui.click(translate_menu_pos)
 
+    print(datetime.utcnow().strftime('%H:%M:%S.%f') + ' - 이미지 번역 대기')
     print(_file_name, '이미지 번역 대기중')
     translate_complete = get_img_pos('translate_complete.png', ['no_text.png', 'no_text2.png', 'no_text3.png'])
+    print(datetime.utcnow().strftime('%H:%M:%S.%f') + ' - 이미지 번역 완료')
     print("translate_complete: ", translate_complete)
     if translate_complete is None:
         print('텍스트가 없어 스킵')
